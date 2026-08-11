@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoulEcho 心靈陪伴平台</title>
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Kalam:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js 圖表套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #eef2f5;
+            --card-bg: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --primary-color: #4a90e2;
+            --primary-hover: #357abd;
+            --border-color: #e2e8f0;
+            --chat-ai-bg: #f0f4f8;
+            --chat-user-bg: #4a90e2;
+            --chat-user-text: #ffffff;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            --radius: 16px;
+
+            /* 擬真筆記本專用色系 */
+            --notebook-cover: #3e2723;
+            --notebook-paper: #fdfbf7;
+            --notebook-line: #e2dcd3;
+            --notebook-text: #333333;
+        }
+
+        [data-theme="dark"] {
+            --bg-main: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --border-color: #334155;
+            --chat-ai-bg: #334155;
+            --chat-user-bg: #3b82f6;
+            --chat-user-text: #ffffff;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+
+            --notebook-cover: #1a0f0d;
+            --notebook-paper: #24211d;
+            --notebook-line: #3a352e;
+            --notebook-text: #e0d8cc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans TC', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* 🌊 全螢幕 Canvas 水滴動畫遮罩 */
+        #rippleOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-main);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #rippleOverlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #rippleCanvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .app-window {
+            width: 100%;
+            max-width: 950px;
+            height: 90vh;
+            max-height: 850px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .app-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            z-index: 10;
+        }
+
+        .brand-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--chat-ai-bg);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+        }
+
+        .page-content {
+            display: none;
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .page-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 1. 登入頁 */
+        .login-container {
+            margin: auto;
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        .login-hero-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            font-size: 0.95rem;
+        }
+
+        .remember-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 16px 0 24px 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        /* 2. 選擇功能介面 */
+        .menu-title {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            margin: auto;
+            width: 100%;
+        }
+
+        .menu-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+
+        .menu-card i {
+            font-size: 2.8rem;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+        }
+
+        /* 3. 聊天室 */
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-right: 10px;
+            margin-bottom: 20px;
+        }
+
+        .chat-bubble {
+            max-width: 75%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+            word-break: break-word;
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: var(--chat-user-bg);
+            color: var(--chat-user-text);
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble.ai {
+            align-self: flex-start;
+            background: var(--chat-ai-bg);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-bar {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* 今日心情 Modal */
+        .modal-mask {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-body {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 30px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            max-width: 380px;
+            width: 90%;
+        }
+
+        .emoji-row {
+            display: flex;
+            justify-content: space-around;
+            font-size: 2.2rem;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .emoji-row span {
+            transition: transform 0.2s ease;
+        }
+
+        .emoji-row span:hover {
+            transform: scale(1.3);
+        }
+
+        /* 📖 4. 擬真實體筆記本專用樣式 */
+        .notebook-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .notebook-container {
+            width: 100%;
+            max-width: 820px;
+            height: 100%;
+            max-height: 520px;
+            background: var(--notebook-cover);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+            position: relative;
+            display: flex;
+        }
+
+        .notebook-pages {
+            flex: 1;
+            background: var(--notebook-paper);
+            border-radius: 6px;
+            display: flex;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--notebook-line);
+        }
+
+        .notebook-pages::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 18px;
+            transform: translateX(-50%);
+            background: linear-gradient(to right, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.15));
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .notebook-page {
+            width: 50%;
+            padding: 24px 28px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            color: var(--notebook-text);
+            background-image: repeating-linear-gradient(transparent,
+                    transparent 31px,
+                    var(--notebook-line) 31px,
+                    var(--notebook-line) 32px);
+            background-position: 0 12px;
+        }
+
+        .notebook-page.left {
+            border-right: 1px solid var(--notebook-line);
+        }
+
+        .page-header-date {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .notebook-input-title {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--notebook-text);
+            outline: none;
+            padding: 4px 0;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        .notebook-textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            resize: none;
+            font-size: 0.95rem;
+            line-height: 32px;
+            color: var(--notebook-text);
+            outline: none;
+            width: 100%;
+        }
+
+        .diary-view-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--notebook-text);
+        }
+
+        .diary-view-content {
+            flex: 1;
+            font-size: 0.95rem;
+            line-height: 32px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            color: var(--notebook-text);
+        }
+
+        .flip-controls {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .page-number {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: bold;
+        }
+
+        /* 📱 響應式 RWD 縮放設定 */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .app-window {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+                border: none;
+            }
+
+            .page-content {
+                padding: 16px;
+            }
+
+            .notebook-container {
+                max-height: none;
+                height: auto;
+                overflow-y: auto;
+            }
+
+            .notebook-pages {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .notebook-pages::before {
+                display: none;
+            }
+
+            .notebook-page {
+                width: 100%;
+                min-height: 300px;
+            }
+
+            .notebook-page.left {
+                border-right: none;
+                border-bottom: 2px dashed var(--notebook-line);
+            }
+
+            .chat-bubble {
+                max-width: 88%;
+            }
+
+            .btn {
+                padding: 8px 14px;
+                font-size: 0.88rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 💧 水滴 + 波紋 繪製遮罩層 -->
+    <div id="rippleOverlay">
+        <canvas id="rippleCanvas"></canvas>
+    </div>
+
+    <div class="app-window">
+        <!-- 頂部導覽列 -->
+        <header class="app-header">
+            <div class="brand-logo">
+                <i class="fa-solid fa-heart-pulse"></i> SoulEcho
+            </div>
+            <div class="header-actions">
+                <button id="btnBackMenu" class="btn btn-outline" style="display:none;" onclick="switchPage('menuPage')">
+                    <i class="fa-solid fa-house"></i> 回主選單
+                </button>
+                <button class="btn btn-outline" onclick="toggleTheme()">
+                    <i class="fa-solid fa-circle-half-stroke"></i> 切換主題
+                </button>
+            </div>
+        </header>
+
+        <!-- 1. 登入介面 -->
+        <div id="loginPage" class="page-content active">
+            <div class="login-container">
+                <div class="login-hero-icon"><i class="fa-regular fa-comments"></i></div>
+                <h1 class="login-title">歡迎使用 SoulEcho</h1>
+                <p class="login-subtitle">傾聽你的聲音，陪伴你的每一個瞬間</p>
+
+                <input type="email" id="userEmail" class="form-control" placeholder="請輸入您的電子郵件 (Email)" required>
+
+                <label class="remember-group">
+                    <input type="checkbox" id="rememberMe"> 記住我的電子郵件
+                </label>
+
+                <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;"
+                    onclick="handleLogin()">
+                    進入系統 <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. 選擇功能介面 -->
+        <div id="menuPage" class="page-content">
+            <h2 class="menu-title" id="welcomeUserText">今天想做些什麼呢？</h2>
+            <div class="menu-grid">
+                <div class="menu-card" onclick="openChatPage()">
+                    <i class="fa-solid fa-robot"></i>
+                    <h3>聊天 AI 夥伴</h3>
+                    <p style="color: var(--text-secondary); margin-top: 8px; font-size: 0.9rem;">溫柔傾聽與陪伴對話</p>
+                </div>
+                <div class="menu-card" onclick="openDiaryPage()">
+                    <i class="fa-solid fa-book-bookmark"></i>
+                    <h3>心情筆記本</h3>
+                    <p style="color: var(--text-secondary); margin-top: 8px; font-size: 0.9rem;">翻閱歷史記憶，隨手記錄</p>
+                </div>
+                <div class="menu-card" onclick="openAnalyticsPage()">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <h3>心理健康圖表</h3>
+                    <p style="color: var(--text-secondary); margin-top: 8px; font-size: 0.9rem;">
+                        AI根據紀錄分析情緒狀態與建議</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 聊天 AI 介面 -->
+        <div id="chatPage" class="page-content">
+            <div class="chat-box" id="chatBox"></div>
+            <div class="chat-input-bar">
+                <input type="text" id="chatInput" class="form-control" placeholder="寫下你的心情或想法..."
+                    onkeydown="if(event.key==='Enter') sendChatMessage()">
+                <button class="btn btn-primary" onclick="sendChatMessage()"><i class="fa-solid fa-paper-plane"></i>
+                    發送</button>
+            </div>
+        </div>
+
+        <!-- 今日心情 Modal -->
+        <div id="moodModal" class="modal-mask" style="display: none;">
+            <div class="modal-body">
+                <h3>選個表情，代表今天的狀態吧！</h3>
+                <div class="emoji-row">
+                    <span onclick="selectMood('😭')">😭</span>
+                    <span onclick="selectMood('😔')">😔</span>
+                    <span onclick="selectMood('😐')">😐</span>
+                    <span onclick="selectMood('🙂')">🙂</span>
+                    <span onclick="selectMood('🥰')">🥰</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📖 4. 擬真心情筆記本介面 -->
+        <div id="diaryPage" class="page-content">
+            <div class="notebook-wrapper">
+                <div class="notebook-container">
+                    <div class="notebook-pages">
+
+                        <!-- 左頁：寫日記區 -->
+                        <div class="notebook-page left">
+                            <div class="page-header-date">
+                                <span><i class="fa-regular fa-calendar-check"></i> 當下時間：</span>
+                                <span id="currentTimestamp">--:--</span>
+                            </div>
+                            <input type="text" id="diaryTitle" class="notebook-input-title" placeholder="輸入今日日記標題...">
+                            <textarea id="diaryContent" class="notebook-textarea"
+                                placeholder="隨心所欲地在此寫下心情..."></textarea>
+                            <button class="btn btn-primary" style="margin-top: 10px; align-self: flex-end;"
+                                onclick="saveDiary()">
+                                <i class="fa-solid fa-pencil"></i> 寫入筆記本
+                            </button>
+                        </div>
+
+                        <!-- 右頁：翻閱歷史日記區 -->
+                        <div class="notebook-page right">
+                            <div class="page-header-date">
+                                <span><i class="fa-solid fa-bookmark"></i> 歷史紀錄</span>
+                                <span id="diaryViewTime">無紀錄</span>
+                            </div>
+                            <div id="diaryViewTitle" class="diary-view-title">尚未有日記</div>
+                            <div id="diaryViewContent" class="diary-view-content">點選下方翻頁按鈕，翻閱讀取的舊筆記...</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 翻頁控制列 -->
+                <div class="flip-controls">
+                    <button class="btn btn-outline" onclick="prevDiaryPage()"><i class="fa-solid fa-chevron-left"></i>
+                        上一頁 (較舊)</button>
+                    <span class="page-number" id="pageIndicator">頁次 0 / 0</span>
+                    <button class="btn btn-outline" onclick="nextDiaryPage()">下一頁 (較新) <i
+                            class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📊 5. 心理健康圖表分析介面 -->
+        <div id="analyticsPage" class="page-content">
+            <div style="max-width: 650px; margin: 0 auto; width: 100%; text-align: center;">
+                <h2 style="font-size: 1.4rem; margin-bottom: 6px;"><i class="fa-solid fa-chart-radar"
+                        style="color: var(--primary-color);"></i> 心靈雷達與情緒分析</h2>
+                <p id="analyticsSummary" style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 20px;">
+                    AI 正在分析您的近期紀錄...</p>
+
+                <!-- 圖表容器 -->
+                <div
+                    style="position: relative; width: 100%; max-width: 400px; margin: 0 auto 25px auto; background: var(--bg-main); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-color);">
+                    <canvas id="healthChart"></canvas>
+                </div>
+
+                <!-- 建議卡片區 -->
+                <div
+                    style="background: var(--chat-ai-bg); padding: 20px; border-radius: var(--radius); text-align: left; border-left: 4px solid var(--primary-color);">
+                    <h4
+                        style="margin-bottom: 10px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-lightbulb"></i> SoulEcho 的溫馨小建議
+                    </h4>
+                    <ul id="suggestionsList"
+                        style="list-style: none; padding-left: 0; line-height: 1.8; font-size: 0.95rem;">
+                        <li>載入分析結果中...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = 'https://skipping-computer-siesta.ngrok-free.dev'; // API 網址
+        let currentUserEmail = '';
+
+        let diaryList = [];
+        let currentDiaryIndex = 0;
+        let myHealthChart = null;
+
+        // 🎨 純 Canvas 水滴與水波紋繪製引擎
+        function playRippleAnimation(onComplete) {
+            const overlay = document.getElementById('rippleOverlay');
+            const canvas = document.getElementById('rippleCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // 調整解析度適應當前螢幕
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+
+            overlay.classList.add('active');
+
+            const startX = width / 2;
+            const targetY = height / 2;
+            const startY = targetY - 200;
+
+            const duration = 1500; // 1.5 秒
+            const dropDuration = 500; // 前 0.5 秒水滴落下
+            const startTime = performance.now();
+
+            function animate(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                ctx.clearRect(0, 0, width, height);
+
+                // 取當前主題的主色調 #4a90e2
+                const primaryColor = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--primary-color').trim() || '#4a90e2';
+
+                if (elapsed < dropDuration) {
+                    // 1. 水滴下落階段 (0 ~ 0.5s)
+                    const dropProgress = elapsed / dropDuration;
+                    const currentY = startY + (targetY - startY) * dropProgress;
+
+                    ctx.save();
+                    ctx.fillStyle = primaryColor;
+                    ctx.beginPath();
+
+                    // 水滴形狀 (圓形 + 向上收尖)
+                    ctx.arc(startX, currentY, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX - 7, currentY - 2);
+                    ctx.lineTo(startX, currentY - 22);
+                    ctx.lineTo(startX + 7, currentY - 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                } else {
+                    // 2. 波紋擴散階段 (0.5s ~ 1.5s)
+                    const rippleElapsed = elapsed - dropDuration;
+                    const rippleProgress = rippleElapsed / (duration - dropDuration);
+
+                    // 水波紋 1 (第一圈)
+                    const radius1 = rippleProgress * 180;
+                    const alpha1 = Math.max(0, 1 - rippleProgress);
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(startX, targetY, radius1, 0, Math.PI * 2);
+                    ctx.strokeStyle = primaryColor;
+                    ctx.globalAlpha = alpha1;
+                    ctx.lineWidth = Math.max(1, 5 * (1 - rippleProgress));
+                    ctx.stroke();
+
+                    // 水波紋 2 (第二圈，延遲 0.15 秒產生)
+                    if (rippleProgress > 0.15) {
+                        const progress2 = (rippleProgress - 0.15) / 0.85;
+                        const radius2 = progress2 * 140;
+                        const alpha2 = Math.max(0, 0.7 * (1 - progress2));
+
+                        ctx.beginPath();
+                        ctx.arc(startX, targetY, radius2, 0, Math.PI * 2);
+                        ctx.strokeStyle = primaryColor;
+                        ctx.globalAlpha = alpha2;
+                        ctx.lineWidth = Math.max(1, 4 * (1 - progress2));
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    // 動畫播放結束
+                    overlay.classList.remove('active');
+                    if (typeof onComplete === 'function') onComplete();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+
+            // 若當前在圖表頁面，重新繪製以更新字體色彩
+            if (document.getElementById('analyticsPage').classList.contains('active') && myHealthChart) {
+                openAnalyticsPage();
+            }
+        }
+
+        function switchPage(pageId) {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            const btnBack = document.getElementById('btnBackMenu');
+            btnBack.style.display = (pageId !== 'loginPage' && pageId !== 'menuPage') ? 'inline-flex' : 'none';
+        }
+
+        // 即時時間更新
+        function updateLiveTime() {
+            const now = new Date();
+            const timeStr = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0');
+
+            const timeElem = document.getElementById('currentTimestamp');
+            if (timeElem) timeElem.innerText = timeStr;
+        }
+        setInterval(updateLiveTime, 1000);
+
+        window.onload = () => {
+            updateLiveTime();
+
+            const savedEmail = localStorage.getItem('rememberedEmail');
+            if (savedEmail) {
+                document.getElementById('userEmail').value = savedEmail;
+                document.getElementById('rememberMe').checked = true;
+            }
+        };
+
+        function handleLogin() {
+            const email = document.getElementById('userEmail').value.trim();
+            if (!email || !email.includes('@')) return alert('請輸入正確的 Email 格式');
+
+            currentUserEmail = email;
+            if (document.getElementById('rememberMe').checked) {
+                localStorage.setItem('rememberedEmail', email);
+            } else {
+                localStorage.removeItem('rememberedEmail');
+            }
+
+            document.getElementById('welcomeUserText').innerText = `你好，${currentUserEmail.split('@')[0]}！今天想做些什麼呢？`;
+
+            // 💧 執行 Canvas 水滴波紋動畫，精準 1.5 秒後進入主選單
+            playRippleAnimation(() => {
+                switchPage('menuPage');
+            });
+        }
+
+        // --- 聊天 AI 邏輯 ---
+        function openChatPage() {
+            switchPage('chatPage');
+
+            // 判斷今天是否已經打卡過表情符號
+            const todayStr = new Date().toISOString().split('T')[0];
+            const lastCheckinDate = localStorage.getItem(`mood_checkin_${currentUserEmail}`);
+
+            if (lastCheckinDate === todayStr) {
+                // 今天已打卡過，跳過表情選擇畫面
+                document.getElementById('moodModal').style.display = 'none';
+            } else {
+                // 今天尚未打卡，顯示彈窗
+                document.getElementById('moodModal').style.display = 'flex';
+            }
+
+            loadChatHistory();
+        }
+
+        async function selectMood(emoji) {
+            document.getElementById('moodModal').style.display = 'none';
+
+            // 寫入今天的打卡紀錄 (以 YYYY-MM-DD 為 key，並區分使用者)
+            const todayStr = new Date().toISOString().split('T')[0];
+            localStorage.setItem(`mood_checkin_${currentUserEmail}`, todayStr);
+
+            appendBubble('user', `【今日心情打卡：${emoji}】`);
+            try {
+                const res = await fetch(`${API_BASE}/api/mood`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ user_id: currentUserEmail, emoji: emoji })
+                });
+                const data = await res.json();
+                if (data.ai_response) {
+                    appendBubble('ai', data.ai_response);
+                }
+            } catch (err) {
+                console.error("Mood error:", err);
+            }
+        }
+
+        async function loadChatHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/api/history`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ user_id: currentUserEmail })
+                });
+                const data = await res.json();
+                const box = document.getElementById('chatBox');
+                box.innerHTML = '';
+                if (data.history && data.history.length > 0) {
+                    data.history.forEach(m => appendBubble(m.role === 'user' ? 'user' : 'ai', m.text));
+                } else {
+                    appendBubble('ai', '你好！我是 SoulEcho，今天過得還順利嗎？');
+                }
+            } catch (err) {
+                console.error("Load history error:", err);
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            appendBubble('user', msg);
+            input.value = '';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ user_id: currentUserEmail, message: msg })
+                });
+                const data = await res.json();
+                if (data.ai_response) appendBubble('ai', data.ai_response);
+            } catch (err) {
+                console.error("Send message error:", err);
+                appendBubble('ai', "❌ 連線出現異常，請稍後再試。");
+            }
+        }
+
+        function appendBubble(role, text) {
+            const box = document.getElementById('chatBox');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${role}`;
+            bubble.innerText = text;
+            box.appendChild(bubble);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // --- 📖 心情筆記本邏輯 ---
+        function openDiaryPage() {
+            switchPage('diaryPage');
+            loadDiaries();
+        }
+
+        async function saveDiary() {
+            const title = document.getElementById('diaryTitle').value.trim();
+            const content = document.getElementById('diaryContent').value.trim();
+            if (!content) return alert('請填寫筆記內容');
+
+            try {
+                await fetch(`${API_BASE}/api/diary/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ user_id: currentUserEmail, title: title || '無標題', content: content })
+                });
+                document.getElementById('diaryTitle').value = '';
+                document.getElementById('diaryContent').value = '';
+
+                await loadDiaries();
+                currentDiaryIndex = 0;
+                renderCurrentDiaryPage();
+                alert('筆記已順利寫入！');
+            } catch (err) {
+                console.error("Save diary error:", err);
+                alert('儲存失敗，請檢查網路連線。');
+            }
+        }
+
+        async function loadDiaries() {
+            try {
+                const res = await fetch(`${API_BASE}/api/diary/list`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ user_id: currentUserEmail })
+                });
+                const data = await res.json();
+
+                const rawDiaries = data.diaries || data.list || data.data || [];
+
+                diaryList = rawDiaries.map(item => ({
+                    title: item.title || item.subject || '無標題',
+                    content: item.content || item.text || item.body || '',
+                    created_at: item.created_at || item.timestamp || item.time || item.date || '時間未知'
+                }));
+
+                currentDiaryIndex = 0;
+                renderCurrentDiaryPage();
+            } catch (err) {
+                console.error("Load diaries error:", err);
+            }
+        }
+
+        function renderCurrentDiaryPage() {
+            const titleElem = document.getElementById('diaryViewTitle');
+            const contentElem = document.getElementById('diaryViewContent');
+            const timeElem = document.getElementById('diaryViewTime');
+            const pageIndicator = document.getElementById('pageIndicator');
+
+            if (diaryList.length === 0) {
+                titleElem.innerText = '尚無紀錄';
+                contentElem.innerText = '在左頁寫下你的第一篇心情日記吧！';
+                timeElem.innerText = '--:--';
+                pageIndicator.innerText = '頁次 0 / 0';
+                return;
+            }
+
+            const current = diaryList[currentDiaryIndex];
+            titleElem.innerText = current.title;
+            contentElem.innerText = current.content;
+            timeElem.innerText = current.created_at;
+
+            pageIndicator.innerText = `第 ${diaryList.length - currentDiaryIndex} 頁 / 共 ${diaryList.length} 頁`;
+        }
+
+        function prevDiaryPage() {
+            if (currentDiaryIndex < diaryList.length - 1) {
+                currentDiaryIndex++;
+                renderCurrentDiaryPage();
+            }
+        }
+
+        function nextDiaryPage() {
+            if (currentDiaryIndex > 0) {
+                currentDiaryIndex--;
+                renderCurrentDiaryPage();
+            }
+        }
+
+        // --- 📊 心理健康圖表邏輯 ---
+        async function openAnalyticsPage() {
+            switchPage('analyticsPage');
+
+            const summaryElem = document.getElementById('analyticsSummary');
+            const listElem = document.getElementById('suggestionsList');
+
+            summaryElem.innerText = "SoulEcho 正在整理您的心情筆記與對話紀錄...";
+            listElem.innerHTML = "<li><i class='fa-solid fa-spinner fa-spin'></i> AI 分析中，請稍候...</li>";
+
+            try {
+                const res = await fetch(`${API_BASE}/api/analytics/mental_health`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ user_id: currentUserEmail })
+                });
+                const data = await res.json();
+
+                // 渲染總結與建議
+                summaryElem.innerText = data.summary || "這是您最近的心情調適狀態：";
+
+                listElem.innerHTML = '';
+                if (data.suggestions && data.suggestions.length > 0) {
+                    data.suggestions.forEach(sug => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<i class="fa-solid fa-heart" style="color: #e74c3c; margin-right: 8px;"></i> ${sug}`;
+                        listElem.appendChild(li);
+                    });
+                } else {
+                    listElem.innerHTML = "<li>目前狀態相當穩定，保持好心情喔！</li>";
+                }
+
+                // 繪製 Chart.js 雷達圖
+                renderRadarChart(data);
+
+            } catch (err) {
+                console.error("Analytics error:", err);
+                summaryElem.innerText = "無法載入分析結果，請稍後再試。";
+            }
+        }
+
+        function renderRadarChart(data) {
+            const ctx = document.getElementById('healthChart').getContext('2d');
+
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#4a90e2';
+            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#2c3e50';
+
+            if (myHealthChart) {
+                myHealthChart.destroy();
+            }
+
+            myHealthChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['情緒穩定度', '壓力指數', '正向積極度', '自我覺察力', '社交歸屬感'],
+                    datasets: [{
+                        label: '心理健康狀態',
+                        data: [
+                            data.emotional_stability || 50,
+                            data.stress_level || 50,
+                            data.positivity || 50,
+                            data.self_awareness || 50,
+                            data.social_connection || 50
+                        ],
+                        backgroundColor: primaryColor + '33',
+                        borderColor: primaryColor,
+                        borderWidth: 2,
+                        pointBackgroundColor: primaryColor,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(128, 128, 128, 0.2)' },
+                            grid: { color: 'rgba(128, 128, 128, 0.2)' },
+                            pointLabels: {
+                                color: textColor,
+                                font: { size: 12, family: 'Noto Sans TC' }
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
